@@ -1,0 +1,13 @@
+# Terraform
+foundation/.terraform/
+foundation/.terraform.lock.hcl
+
+# Kubernetes / kubeconfig
+kubeconfig.yaml
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+
