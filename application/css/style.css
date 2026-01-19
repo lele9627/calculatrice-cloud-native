@@ -1,0 +1,113 @@
+/* From Uiverse.io by adamgiebl */ 
+.button {
+  align-items: center;
+  appearance: none;
+  background-color: #EEF2FF;
+  border-radius: 8px;
+  border-width: 2px;
+  border-color: #536DFE;
+  box-shadow: rgba(83, 109, 254, 0.2) 0 2px 4px, rgba(83, 109, 254, 0.15) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+  box-sizing: border-box;
+  color: #536DFE;
+  cursor: pointer;
+  display: inline-flex;
+  font-family: "JetBrains Mono", monospace;
+  height: 56px;
+  justify-content: center;
+  line-height: 1;
+  list-style: none;
+  overflow: hidden;
+  padding-left: 24px;
+  padding-right: 24px;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  white-space: nowrap;
+  will-change: box-shadow, transform;
+  font-size: 20px;
+}
+
+.button:focus {
+  outline: none;
+  box-shadow: #D6D6E7 0 0 0 1.5px inset, rgba(83, 109, 254, 0.4) 0 2px 4px, rgba(83, 109, 254, 0.3) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+}
+
+.button:hover {
+  box-shadow: rgba(83, 109, 254, 0.3) 0 4px 8px, rgba(83, 109, 254, 0.2) 0 7px 13px -3px, #D6D6E7 0 -3px 0 inset;
+  transform: translateY(-2px);
+}
+
+.button:active {
+  box-shadow: #D6D6E7 0 3px 7px inset;
+  transform: translateY(2px);
+}
+
+/* From Uiverse.io by Alanav29 */ 
+.input-container {
+  width: auto;
+  position: static;
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.input-container label {
+  color: black;
+  position: relative;
+  top: 2px;
+  border: solid white;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  width: fit-content;
+  transition: transform 0.2s;
+  margin: 0px 0px 0px 12px;
+  padding: 0px 4px 0px 4px;
+  font-size: 20px;
+}
+
+.input-container input:focus + label {
+  color: rgb(161, 66, 249);
+  transform: scale(1.2);
+  transform: translateX(0.5rem);
+}
+
+.input-container input {
+  border: 2px rgb(161, 66, 249) solid;
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.input-container input:focus {
+  outline: none;
+}
+/* Reset minimal */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Centrage global */
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f2f2f2;
+  font-family: Arial, sans-serif;
+}
+.calculator-container {
+  padding: 20px;
+}
+
+.calculator {
+  background-color: #ffffff;
+  padding: 20px;
+  border-radius: 12px;
+  border: 2px solid #ccc;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
