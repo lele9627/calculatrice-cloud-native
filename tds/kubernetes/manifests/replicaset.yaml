@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  labels:
+    app: frontend
+    soft: kuard
+  name: kuard-rs
+  namespace: victor-leopold
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+      soft: kuard
+  template:
+    metadata:
+      labels:
+        app: frontend
+        soft: kuard
+    spec:
+      containers:
+        - name: kuard
+          image: europe-west1-docker.pkg.dev/polytech-dijon/polytech-dijon/kuard:blue
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
