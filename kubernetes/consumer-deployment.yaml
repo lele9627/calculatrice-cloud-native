@@ -1,23 +1,21 @@
 apiVersion: apps/v1
-kind: ReplicaSet
+kind: Deployment
 metadata:
-  name: backend-rs
+  name: consumer
   namespace: victor-leopold
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: backend
+      app: consumer
   template:
     metadata:
       labels:
-        app: backend
+        app: consumer
     spec:
       containers:
-        - name: backend
-          image: lele9627/calculatrice-backend:v3
-          ports:
-            - containerPort: 5000
+        - name: consumer
+          image: lele9627/calculatrice-consumer:v1
           env:
             - name: REDIS_HOST
               value: redis-service
@@ -29,3 +27,4 @@ spec:
               value: "5672"
             - name: RABBIT_QUEUE
               value: calc_jobs
+

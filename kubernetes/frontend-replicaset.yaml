@@ -15,11 +15,10 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: lele9627/calculatrice-frontend:v1
+          image: lele9627/calculatrice-frontend:v2
           ports:
             - containerPort: 80
           resources:
             requests:
               cpu: "4m"
               memory: "32Mi"
-

@@ -11,3 +11,13 @@ kubeconfig.yaml
 # OS
 .DS_Store
 
+# Python cache
+__pycache__/
+application/__pycache__/
+*.pyc
+
+# Local artifacts
+application/5000
+
+# Local tooling
+.codex/

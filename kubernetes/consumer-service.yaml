@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: consumer-service
+  namespace: victor-leopold
+spec:
+  selector:
+    app: consumer
+  type: ClusterIP
+  ports:
+    - name: dummy
+      port: 80
+      targetPort: 80
+

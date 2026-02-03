@@ -1,124 +1,117 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 import redis
 import uuid
 import os
 import json
 import pika
 
-app = Flask(__name__, static_folder=None)
+app = Flask(__name__)
 
-# ---------------- Redis ----------------
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+# ======================
+# Redis configuration
+# ======================
+REDIS_HOST = os.getenv("REDIS_HOST", "redis-service")
 REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
 TTL_SECONDS = 600
 
-def _k_status(op_id: str) -> str:
-    return f"calc:{op_id}:status"   # queued | processing | done | error
+r = redis.Redis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    db=0,
+    decode_responses=True
+)
 
-def _k_result(op_id: str) -> str:
-    return f"calc:{op_id}:result"
+def key_status(op_id): return f"calc:{op_id}:status"
+def key_result(op_id): return f"calc:{op_id}:result"
+def key_error(op_id):  return f"calc:{op_id}:error"
 
-def _k_error(op_id: str) -> str:
-    return f"calc:{op_id}:error"
-
-# -------------- RabbitMQ --------------
-RABBIT_HOST = os.getenv("RABBIT_HOST", "localhost")
+# ======================
+# RabbitMQ configuration
+# ======================
+RABBIT_HOST = os.getenv("RABBIT_HOST", "rabbitmq-service")
 RABBIT_PORT = int(os.getenv("RABBIT_PORT", "5672"))
 RABBIT_QUEUE = os.getenv("RABBIT_QUEUE", "calc_jobs")
 
-def publish_job(message: dict) -> None:
-    """
-    Publication simple dans RabbitMQ.
-    Pour un TP, ouvrir/fermer une connexion par requête est acceptable.
-    (Optimisation possible: connexion globale + retry.)
-    """
+def publish_job(message: dict):
     params = pika.ConnectionParameters(host=RABBIT_HOST, port=RABBIT_PORT)
     connection = pika.BlockingConnection(params)
     channel = connection.channel()
     channel.queue_declare(queue=RABBIT_QUEUE, durable=True)
 
-    body = json.dumps(message).encode("utf-8")
     channel.basic_publish(
         exchange="",
         routing_key=RABBIT_QUEUE,
-        body=body,
-        properties=pika.BasicProperties(delivery_mode=2),  # message persistant
+        body=json.dumps(message),
+        properties=pika.BasicProperties(delivery_mode=2)
     )
     connection.close()
 
-def newCalc(expr: str) -> str:
-    op_id = str(uuid.uuid4())
-    pipe = r.pipeline()
-    pipe.set(_k_status(op_id), "queued", ex=TTL_SECONDS)
-    pipe.set(f"calc:{op_id}:expr", expr, ex=TTL_SECONDS)  # utile pour debug
-    pipe.execute()
-    return op_id
+# ======================
+# API ROUTES
+# ======================
 
-def getResult(op_id: str):
-    status = r.get(_k_status(op_id))
-    if status is None:
-        return {"id": op_id, "status": "waiting", "message": "Waiting for result"}
-
-    if status == "done":
-        val = r.get(_k_result(op_id))
-        try:
-            if val is None:
-                return {"id": op_id, "status": "done", "result": None}
-            if "." in val:
-                num = float(val)
-                return {"id": op_id, "status": "done", "result": int(num) if num.is_integer() else num}
-            return {"id": op_id, "status": "done", "result": int(val)}
-        except Exception:
-            return {"id": op_id, "status": "done", "result": val}
-
-    if status == "error":
-        return {"id": op_id, "status": "error", "error": r.get(_k_error(op_id)) or "Unknown error"}
-
-    return {"id": op_id, "status": "waiting", "message": "Waiting for result"}
-
-# -------------- Static routes ----------
-@app.get("/")
-def home():
-    return send_from_directory(".", "index.html")
-
-@app.get("/css/<path:filename>")
-def css_files(filename):
-    return send_from_directory("css", filename)
-
-@app.get("/js/<path:filename>")
-def js_files(filename):
-    return send_from_directory("js", filename)
-
-# -------------- API --------------------
 @app.post("/api/calc")
-def calc():
+def create_calc():
+    """
+    Reçoit une expression (ex: "2+3"),
+    enregistre la demande,
+    envoie le job à RabbitMQ,
+    retourne un ID.
+    """
     data = request.get_json(silent=True) or {}
-    expr = (data.get("expression") or "").strip()
+    expression = data.get("expression", "").strip()
 
-    # 1) Créer opération (Redis: queued)
-    op_id = newCalc(expr)
+    if not expression:
+        return jsonify({"error": "Expression missing"}), 400
 
-    # 2) Publier job dans RabbitMQ (le consumer calculera)
+    op_id = str(uuid.uuid4())
+
+    # Stockage initial
+    r.set(key_status(op_id), "queued", ex=TTL_SECONDS)
+
     try:
-        publish_job({"id": op_id, "expression": expr})
+        publish_job({
+            "id": op_id,
+            "expression": expression
+        })
     except Exception as e:
-        # Si RabbitMQ est down, on marque en erreur pour ne pas laisser "queued" indéfiniment
-        r.set(_k_status(op_id), "error", ex=TTL_SECONDS)
-        r.set(_k_error(op_id), f"RabbitMQ error: {e}", ex=TTL_SECONDS)
-        return jsonify({"id": op_id, "status": "error", "error": "RabbitMQ unavailable"}), 503
+        r.set(key_status(op_id), "error", ex=TTL_SECONDS)
+        r.set(key_error(op_id), str(e), ex=TTL_SECONDS)
+        return jsonify({"error": "RabbitMQ unavailable"}), 503
 
-    # 3) Répondre immédiatement
-    return jsonify({"id": op_id, "status": "queued"}), 202
+    return jsonify({
+        "id": op_id,
+        "status": "queued"
+    }), 202
+
 
 @app.get("/api/result/<op_id>")
-def api_result(op_id: str):
-    payload = getResult(op_id)
-    if payload.get("status") == "error":
-        return jsonify(payload), 400
-    if payload.get("status") == "done":
-        return jsonify(payload), 200
-    return jsonify(payload), 202
+def get_result(op_id):
+    status = r.get(key_status(op_id))
+
+    if status is None:
+        return jsonify({"status": "unknown"}), 404
+
+    if status == "done":
+        return jsonify({
+            "status": "done",
+            "result": r.get(key_result(op_id))
+        }), 200
+
+    if status == "error":
+        return jsonify({
+            "status": "error",
+            "error": r.get(key_error(op_id))
+        }), 400
+
+    return jsonify({
+        "status": status
+    }), 202
+
+
+# ======================
+# Health checks (très bien pour le projet)
+# ======================
 
 @app.get("/api/health/redis")
 def health_redis():
@@ -127,6 +120,7 @@ def health_redis():
         return jsonify({"redis": "ok"}), 200
     except Exception as e:
         return jsonify({"redis": "down", "error": str(e)}), 500
+
 
 @app.get("/api/health/rabbit")
 def health_rabbit():
@@ -138,6 +132,13 @@ def health_rabbit():
     except Exception as e:
         return jsonify({"rabbitmq": "down", "error": str(e)}), 500
 
-if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5001, debug=True)
 
+# ======================
+# ENTRYPOINT KUBERNETES
+# ======================
+if __name__ == "__main__":
+    app.run(
+        host="0.0.0.0",   # OBLIGATOIRE en Kubernetes
+        port=5000,        # DOIT matcher Service + nginx
+        debug=False
+    )
