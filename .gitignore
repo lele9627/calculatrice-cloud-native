@@ -1,23 +1,51 @@
-# Terraform
-foundation/.terraform/
-foundation/.terraform.lock.hcl
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+student.json
+*credentials*.json
+*service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
 
-# Kubernetes / kubeconfig
-kubeconfig.yaml
-
-# Docker
-*.log
-
-# OS
-.DS_Store
-
-# Python cache
+# Python
+.venv/
+venv/
 __pycache__/
-application/__pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
 
-# Local artifacts
+# Terraform runtime data (dependency lock files remain tracked)
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Kubernetes credentials
+kubeconfig
+kubeconfig.*
+*.kubeconfig
+
+# Logs and local artifacts
+*.log
 application/5000
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
 
 # Local tooling
 .codex/

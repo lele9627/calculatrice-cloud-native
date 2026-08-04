@@ -1,0 +1,113 @@
+name: cloud-native-calculator
+
+services:
+  frontend:
+    build:
+      context: ./application
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - calculator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./application
+      dockerfile: Dockerfile.backend
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: "5672"
+      RABBIT_QUEUE: ${RABBIT_QUEUE:-calc_jobs}
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      calculator-network:
+        aliases:
+          - backend-service
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://localhost:5000/api/health/redis', timeout=2);
+          urllib.request.urlopen('http://localhost:5000/api/health/rabbit', timeout=2)
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  consumer:
+    build:
+      context: ./application
+      dockerfile: Dockerfile.consumer
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      RABBIT_HOST: rabbitmq
+      RABBIT_PORT: "5672"
+      RABBIT_QUEUE: ${RABBIT_QUEUE:-calc_jobs}
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - calculator-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    ports:
+      - "127.0.0.1:${REDIS_PUBLISHED_PORT:-6379}:6379"
+    networks:
+      - calculator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      # Les clients Python inchangés utilisent les valeurs guest/guest par défaut de Pika.
+      # Cette exception reste limitée au réseau en pont local et ne convient pas
+      # à un environnement partagé ou de production.
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit loopback_users none"
+    ports:
+      - "127.0.0.1:${RABBIT_PUBLISHED_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBIT_MANAGEMENT_PORT:-15672}:15672"
+    networks:
+      - calculator-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+networks:
+  calculator-network:
+    driver: bridge
