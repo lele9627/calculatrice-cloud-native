@@ -142,8 +142,11 @@ Le registre est déjà créé. Il ne vous reste que la connexion et l'envoi de v
 0. Commencer, si ce n'est pas déjà fait, par installer [gcloud](https://docs.cloud.google.com/sdk/docs/install-sdk?hl=fr#latest-version).
 1. Nous allons utiliser [le même identifiant que pour le TD sur Terraform](../docs/rappel-terraform.md#google), pour l'utiliser dans ce mode nous devons d'abord l'ajouter à gcloud via la commande suivante : 
     ```shell
-    gcloud auth activate-service-account student@polytech-dijon.iam.gserviceaccount.com --key-file="./student.json"
+    gcloud auth activate-service-account <SERVICE_ACCOUNT_EMAIL> --key-file="./student.json"
     ```
+
+    > [!CAUTION]
+    > `student.json` contient une clé privée de compte de service. Conservez ce fichier uniquement en local, vérifiez qu’il reste ignoré par Git et révoquez la clé immédiatement en cas d’exposition.
 
 2. Configurer le projet `polytech-dijon`
 
